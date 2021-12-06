@@ -7,6 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(rvest)
 library(stringr)
+library(readr)
 ```
 
 
@@ -82,7 +83,8 @@ for (i in 1:length(url)) {
     parsed_date <- html_nodes(speech_url, xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "entry-date", " " ))]')
         
     speech <- html_text(parsed_speech)
-    date <- html_text(parsed_date)
+    date <- html_text(parsed_date)%>%
+      parse_date("%B %d, %Y", locale = locale("es"))
         
         if (speech_nr(url[i]) == seq[i] ){
           
