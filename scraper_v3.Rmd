@@ -90,7 +90,7 @@ for (i in 1:length(url)) {
           
           if (!file.exists(paste0(folder,date," no. ", seq[i]))) {
             
-            write(speech, file = paste0(folder,date," no. ", seq[i]))
+            write(speech, file = paste0(folder,date," no. ", seq[i],".txt"))
           }
         }
       }
