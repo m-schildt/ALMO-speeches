@@ -1,0 +1,32 @@
+---
+title: "analysis_v1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Install packages:
+
+```{r cars}
+install.packages("quanteda")
+install.packages("readtext")
+```
+
+Load packages:
+
+```{r pressure, echo=FALSE}
+library("quanteda")
+library("readtext")
+```
+
+```{r}
+data <- read.csv("2018-12-11 no. 2.csv")
+```
+
+
+```{r}
+
+
+```
