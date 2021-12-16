@@ -7,22 +7,23 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Install packages:
-
-```{r cars}
-install.packages("quanteda")
-install.packages("readtext")
-```
-
-Load packages:
 
 ```{r pressure, echo=FALSE}
 library("quanteda")
-library("readtext")
+library("readr")
+library("dplyr")
 ```
 
 ```{r}
-data <- read.csv("2018-12-11 no. 2.csv")
+
+mydir = "sample_data"
+csvfiles = list.files(path=mydir, pattern="*.csv", full.names=TRUE)
+csvfiles
+
+sample_00 = lapply(csvfiles, readtext)
+sample_00
+
+sample_corpus <- corpus(sample_00)
 ```
 
 
