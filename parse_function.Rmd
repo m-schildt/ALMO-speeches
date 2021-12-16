@@ -1,0 +1,91 @@
+---
+title: "data validation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+mydir = "speeches"
+txtfiles = list.files(path=mydir, pattern="*.txt", full.names=TRUE)
+txtfiles
+```
+
+
+
+```{r}
+library(tidyr)
+library(stringr)
+
+parse_amlo <- function(file) {
+  
+  date <- substring(file, 10,19)
+  try({
+    speech <- readChar(file, file.info(file)$size)
+
+    # This is the pattern that so far returns the speakers correctly
+    pattern <- "([ A-ZÀ-Ú])+:"
+    
+    # Those were examples, now do this for the whole file to prep the speech for splitting
+    prepped_speech <- str_replace_all(speech, pattern, "##\\0##")
+    
+    # This splits it row by row, but of course we need speaker and speech on the same column
+    parsed_speech <- as.data.frame(str_split(prepped_speech, "##"), col.names = "A")
+    
+    parsed_speech <- parsed_speech %>%
+      tail(-1)%>%  # remove first row  which has no speaker
+      mutate(variable = rep(c("Speaker", "Text"), nrow(parsed_speech) / 2), 
+           key = rep(1:(nrow(parsed_speech) / 2), each = 2)) %>%
+      pivot_wider(id_cols = key, names_from = variable, values_from = A) %>% # divide speaker and text in separate columns 
+      select(-key) %>% # remove helper 
+      group_by(Speaker) %>% 
+      summarize(Text = paste(Text, collapse = " ")) %>% # combine text of each speaker 
+      mutate(Date = date, .before = Speaker)
+    
+    
+    })
+  
+  return(parsed_speech)
+  
+  }
+
+#test <- parse_amlo(txtfiles[1])
+```
+
+
+```{r}
+# creates list
+sample = lapply(txtfiles, parse_amlo)
+# create data frame
+sample_df <- do.call(rbind,lapply(txtfiles, parse_amlo))
+# write csv from data frame
+write.csv(sample_df,"sample_df.csv")
+
+```
+
+Load the df from the CSV
+```{r}
+sample_df2 <- read.csv(file = 'sample_df.csv', header = TRUE)%>%  
+      select(-X)
+```
+
+create corpus with quanteda
+```{r}
+library("quanteda")
+sample_corpus <- corpus(sample_df2, text_field = "Text")
+summary(sample_corpus)
+
+```
+
+
+```{r}
+
+
+
+
+```
+
