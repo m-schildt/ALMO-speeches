@@ -1,6 +1,6 @@
 
 #load functions
-source("parse/parse2.R")
+source("parse/parse.R")
 source("aggregate.R")
 
 #detect all raw speeches and create a list will all names incl. path
