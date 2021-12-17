@@ -48,5 +48,12 @@ parse <- function(file)
   turns$speaker <- str_to_title(turns$speaker, locale = "es")
   # Some words should not be capitalized. May fix this to make more aesthetically appealing.
   
-  return(turns)
+  ### changes by Marco:
+  #create path & file name 
+  newpath <- paste0("Data/parsed/",substring(file, 10, 19),".csv") 
+  #store data frame
+  write.csv(turns,newpath)
+  
+  # return is not required if df is save already.Therefore, return is commented out.
+  #return(turns)
 }
