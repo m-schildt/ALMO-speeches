@@ -75,24 +75,23 @@ sample_df2 <- read.csv(file = 'sample_df.csv', header = TRUE)%>%
       select(-X)
 ```
 
+##Creating corpuses for data analysis
 
 ```{r}
 #create corpus with quanteda
 library("quanteda")
 main_corpus <- corpus(sample_df2, text_field = "Text")
 summary(main_corpus)
+
+#create corpus with "Month" grouping
+docvars(main_corpus, field = "Month") <- substring(docvars(main_corpus, field = "Date"), 1,7)
+main_corpus2 <- corpus_group(main_corpus, groups = Month)
+summary(main_corpus2)
 ```
+##Preparing tokens and subsets
 
 ```{r}
-#create tokens for main corpus
-main_tokens <-  tokens(main_corpus)
-main_tokens_dfm <- dfm(main_tokens)
-topfeatures(main_tokens_dfm, 50)
-```
-
-
-```{r}
-#clean tokens for main corpus
+#clean and create tokens for main corpus
 main_tokens <- tokens(main_corpus, remove_punct = TRUE, remove_numbers = TRUE)
 main_tokens <- tokens_select(main_tokens, stopwords('spanish'), selection='remove')
 main_tokens_dfm <- dfm(main_tokens)
@@ -101,6 +100,7 @@ topfeatures(main_tokens_dfm, 50)
 
 
 ```{r}
+#subsets with main corpus
 #subset for president's speeches - 590 docs
 subset_president <- (corpus_subset(main_corpus, Speaker == "PRESIDENTE ANDRÉS MANUEL LÓPEZ OBRADOR:"))
 
@@ -116,8 +116,7 @@ subset_president_2021 <- (corpus_subset(subset_president, Date > "2020-12-31"))
 summary(subset_president_2021)
 ```
 
-
-##Analysis with President's Speeches in 2020 and 2021
+## 1) Analysis of top features in President Obrador's speeches
 
 ```{r}
 library("quanteda.textmodels")
@@ -150,7 +149,6 @@ ggplot(dfm_features, aes(x = feature, y = frequency)) +
     geom_point() + 
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
     labs(title = "Top Features of President Obrador's Speeches in 2020",
-         subtitle = "xxx",
         y = "Frequency", x = "Feature") +
     theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
         plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
@@ -167,7 +165,6 @@ ggplot(dfm_features_2, aes(x = feature, y = frequency)) +
     geom_point() + 
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
     labs(title = "Top Features of President Obrador's Speeches in 2021",
-         subtitle = "xxx",
         y = "Frequency", x = "Feature") +
     theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
         plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
@@ -175,6 +172,8 @@ ggplot(dfm_features_2, aes(x = feature, y = frequency)) +
         axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
         axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2))
 ```
+
+## 2) Lexical dispersion analysis of covid related terms by month
 
 ```{r}
 #covid related freq plots
@@ -208,46 +207,50 @@ ggplot(freq_plot, aes(x = feature, y = frequency)) +
 
 ```
 
-```{r}
-#covid related word counts
+## 3) President Obrador's covid related terms vs number of new covid cases in Mexico
 
-library("janitor")
+```{r}
+#covid case data
+
 library("readr")
 
 covid_data_df<-read.csv("https://covid19.who.int/WHO-COVID-19-global-data.csv") %>%
   filter(Country == "Mexico") %>%
   select(-Country_code,-Country,-WHO_region) %>%
-  rename(Date = Date_reported)
-
- covid_data_df
-
-#matrix for covid related terms in 2020
-covid_dic <- dictionary(list(all_terms = c("pandemia", "virus", "crisis", "covid", "sanitaria", "enfermedad")))
-dfm_covid_2020 <- tokens(subset_president_2020) %>% tokens_select(covid_dic) %>% dfm()
-
-dfm_covid_2020
-
-##dfm_covid_2020 %>% adorn_totals(dfm_covid_2020, "row") - not sure what is wrong here
-
-
-
-docnames(dfm_covid_2020) <- docvars(dfm_covid_2020, "Date")
-dfm_covid_2020
-
-covid_2020_df <- convert(dfm_covid_2020, to = "data.frame")
-
-covid_2020_df
-
+  rename(doc_id = Date_reported)
 ```
-
-
-
 
 ```{r}
+#matrix for covid related terms in 2020 and 2021
+covid_dic <- dictionary(list(all_terms = c("pandemia", "virus", "crisis", "covid", "sanitaria", "enfermedad")))
+dfm_covid <- tokens(subset_president_interim) %>% tokens_select(covid_dic) %>% dfm()
 
-dfm_pandemia_int <- tokens(subset_president_interim) %>% tokens_select("pandemia") %>% dfm()
+#add date and turn into data.frame
+docnames(dfm_covid) <- docvars(dfm_covid, "Date")
+covid_terms_df <- convert(dfm_covid, to = "data.frame")
 
-dfm_pandemia_int
+covid_terms_df
 
+covid_terms_df <- covid_terms_df %>% mutate(total_freq = (crisis + enfermedad + virus + sanitaria + pandemia + covid))
+
+final_df <- left_join(covid_terms_df, covid_data_df)
+
+final_df
 ```
+```{r}
+coef <- 1000 #value used to transform the data for a second y-axis
+
+ggplot(final_df, aes(x=doc_id)) +
+  geom_point( aes(y=total_freq), size=0.2, color = "darkred") + 
+  geom_point( aes(y=New_cases / coef), size=0.2, color="steelblue") +
+  scale_y_continuous(name = "Frequency of covid related terms", sec.axis = sec_axis(~.*coef, name="Number of new cases")) + 
+    labs(title = "President Obrador's Covid Related Remarks vs\nNumber of New Covid Cases in Mexico",
+        x = "Date") +
+    theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
+        plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
+        plot.caption = element_text(size = 7, color = "azure4", vjust = -2),
+        axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
+        axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2))
+```
+
 
