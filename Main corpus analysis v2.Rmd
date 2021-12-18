@@ -228,7 +228,21 @@ dfm_covid_2020 <- tokens(subset_president_2020) %>% tokens_select(covid_dic) %>%
 dfm_covid_2020
 
 ##dfm_covid_2020 %>% adorn_totals(dfm_covid_2020, "row") - not sure what is wrong here
+
+
+
+docnames(dfm_covid_2020) <- docvars(dfm_covid_2020, "Date")
+dfm_covid_2020
+
+covid_2020_df <- convert(dfm_covid_2020, to = "data.frame")
+
+covid_2020_df
+
 ```
+
+
+
+
 ```{r}
 
 dfm_pandemia_int <- tokens(subset_president_interim) %>% tokens_select("pandemia") %>% dfm()
