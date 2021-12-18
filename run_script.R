@@ -17,6 +17,9 @@ csvfiles = list.files(path=dir_parsed, pattern="*.csv", full.names=TRUE)
 # aggregate all speeches and returns them in a single data frame
 speeches_df <- do.call(rbind,lapply(csvfiles, aggregate))
 
+# save aggregated data frame
+write.csv(speeches_df,"Data/aggregated/speeches.csv")
+
 
 
 
