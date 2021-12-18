@@ -77,8 +77,15 @@ sample_df2 <- read.csv(file = 'sample_df.csv', header = TRUE)%>%
 create corpus with quanteda
 ```{r}
 library("quanteda")
-main_corpus <- corpus(sample_df2, text_field = "Text")
+main_corpus <- corpus(sample_df2, docnames= "Date", text_field = "Text")
 summary(main_corpus)
+
+
+docvars(main_corpus, field = "Month") <- substring(docvars(main_corpus, field = "Date"), 1,7)
+
+main_corpus2 <- corpus_group(main_corpus, groups = Month)
+summary(main_corpus2)
+
 
 ```
 
@@ -175,9 +182,16 @@ library("janitor")
 
 #matrix for covid related terms in 2020
 covid_dic <- dictionary(list(all_terms = c("pandemia", "virus", "crisis", "covid", "sanitaria", "enfermedad")))
-dfm_covid_2020 <- tokens(subset_president_2020) %>% tokens_select(covid_dic) %>% dfm()
+dfm_covid_2020 <- tokens(subset_president_2020,include_docvars = TRUE) %>% tokens_select(covid_dic) %>% dfm() 
 
+
+docnames(dfm_covid_2020) <- docvars(dfm_covid_2020, "Date")
 dfm_covid_2020
+
+covid_2020_df <- convert(dfm_covid_2020, to = "data.frame")
+
+covid_2020_df
+
 
 ##dfm_covid_2020 %>% adorn_totals(dfm_covid_2020, "row") - not sure what is wrong here
 ```
