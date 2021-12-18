@@ -1,15 +1,28 @@
 ---
-title: "data validation"
-output: html_document
+title: "Corpus analysis"
+subtitle: "Exploration of frequency of terms in President Obrador's speeches"
+author: "Marco Schildt, Santiago Sordo, Gülce Sena Tuncer"
+output: 
+  html_document:
+    toc: TRUE
+    df_print: paged
+    number_sections: FALSE
+    highlight: tango
+    theme: lumen
+    toc_depth: 3
+    toc_float: true
+    css: custom.css 
+    self_contained: false
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(digits=2)
 ```
 
 ## R Markdown
 
-```{r}
+```{r, message=F, comment=F}
 mydir = "speeches"
 txtfiles = list.files(path=mydir, pattern="*.txt", full.names=TRUE)
 txtfiles
@@ -17,7 +30,7 @@ txtfiles
 
 
 
-```{r}
+```{r, message=F, comment=F}
 library(tidyr)
 library(stringr)
 library(dplyr)
@@ -58,7 +71,7 @@ parse_amlo <- function(file) {
 ```
 
 
-```{r}
+```{r, message=F, comment=F}
 # creates list
 sample = lapply(txtfiles, parse_amlo)
 # create data frame
@@ -69,7 +82,7 @@ write.csv(sample_df,"sample_df.csv")
 ```
 
 
-```{r}
+```{r, message=F, comment=F}
 #load the df from the CSV
 sample_df2 <- read.csv(file = 'sample_df.csv', header = TRUE)%>%  
       select(-X)
@@ -77,7 +90,7 @@ sample_df2 <- read.csv(file = 'sample_df.csv', header = TRUE)%>%
 
 ##Creating corpuses for data analysis
 
-```{r}
+```{r, message=F, comment=F}
 #create corpus with quanteda
 library("quanteda")
 main_corpus <- corpus(sample_df2, text_field = "Text")
@@ -85,12 +98,11 @@ summary(main_corpus)
 
 #create corpus with "Month" grouping
 docvars(main_corpus, field = "Month") <- substring(docvars(main_corpus, field = "Date"), 1,7)
-main_corpus2 <- corpus_group(main_corpus, groups = Month)
-summary(main_corpus2)
 ```
+
 ##Preparing tokens and subsets
 
-```{r}
+```{r, message=F, comment=F}
 #clean and create tokens for main corpus
 main_tokens <- tokens(main_corpus, remove_punct = TRUE, remove_numbers = TRUE)
 main_tokens <- tokens_select(main_tokens, stopwords('spanish'), selection='remove')
@@ -99,7 +111,7 @@ topfeatures(main_tokens_dfm, 50)
 ```
 
 
-```{r}
+```{r, message=F, comment=F}
 #subsets with main corpus
 #subset for president's speeches - 590 docs
 subset_president <- (corpus_subset(main_corpus, Speaker == "PRESIDENTE ANDRÉS MANUEL LÓPEZ OBRADOR:"))
@@ -118,7 +130,7 @@ summary(subset_president_2021)
 
 ## 1) Analysis of top features in President Obrador's speeches
 
-```{r}
+```{r, message=F, comment=F}
 library("quanteda.textmodels")
 library("quanteda.textstats")
 library("quanteda.textplots")
@@ -138,7 +150,7 @@ dfm_president_2021 <- dfm(tokens_president_2021)
 
 ```
 
-```{r}
+```{r, message=F, comment=F}
 #top features frequency plots 
 topfeatures(dfm_president_2020, 50)
 dfm_features <- textstat_frequency(dfm_president_2020, n = 50)
@@ -175,15 +187,38 @@ ggplot(dfm_features_2, aes(x = feature, y = frequency)) +
 
 ## 2) Lexical dispersion analysis of covid related terms by month
 
+```{r, message=F, comment=F}
+#group by month
+grouped_corpus <- corpus_group(subset_president_interim, groups = Month)
+summary(grouped_corpus)
+```
 ```{r}
+#plot lexical dispersions
+
+textplot_xray(
+     kwic(grouped_corpus, pattern = "pandemia"),
+     kwic(grouped_corpus, pattern = "virus"),
+     kwic(grouped_corpus, pattern = "covid"),
+     kwic(grouped_corpus, pattern = "crisis"),
+     kwic(grouped_corpus, pattern = "sanitaria"),
+     kwic(grouped_corpus, pattern = "enfermedad")
+) +
+  aes(color = keyword) + 
+    scale_color_manual(values = c("blue", "purple", "pink", "red", "green", "yellow")) +
+    theme(legend.position = "none")
+```
+
+```{r, message=F, comment=F}
+#NOTE: I KEPT THIS SECTION SO THAT WE CAN TRY DIFFERENT/MORE RELEVANT KEYWORDS AND ADJUST BOTH THE LEXICAL DISPERSION PLOTS AND THE ANALYSIS WITH NEW COVID CASES
+
 #covid related freq plots
 freq_interim <- subset_president_interim %>% tokens(groups = subset_president_interim$Date) %>% dfm() %>% textstat_frequency()
-
 
 # filter the terms
 freq_pandemia <- subset(freq_interim, freq_interim$feature %in% "pandemia")
 freq_virus <- subset(freq_interim, freq_interim$feature %in% "virus")
 freq_covid <- subset(freq_interim, freq_interim$feature %in% "covid")
+freq_crisis <- subset(freq_interim, freq_interim$feature %in% "crisis")
 freq_sanitaria <- subset(freq_interim, freq_interim$feature %in% "sanitaria")
 freq_enfermedad <- subset(freq_interim, freq_interim$feature %in% "enfermedad")
 
@@ -209,9 +244,8 @@ ggplot(freq_plot, aes(x = feature, y = frequency)) +
 
 ## 3) President Obrador's covid related terms vs number of new covid cases in Mexico
 
-```{r}
+```{r, message=F, comment=F}
 #covid case data
-
 library("readr")
 
 covid_data_df<-read.csv("https://covid19.who.int/WHO-COVID-19-global-data.csv") %>%
@@ -220,7 +254,7 @@ covid_data_df<-read.csv("https://covid19.who.int/WHO-COVID-19-global-data.csv") 
   rename(doc_id = Date_reported)
 ```
 
-```{r}
+```{r, message=F, comment=F}
 #matrix for covid related terms in 2020 and 2021
 covid_dic <- dictionary(list(all_terms = c("pandemia", "virus", "crisis", "covid", "sanitaria", "enfermedad")))
 dfm_covid <- tokens(subset_president_interim) %>% tokens_select(covid_dic) %>% dfm()
@@ -228,13 +262,10 @@ dfm_covid <- tokens(subset_president_interim) %>% tokens_select(covid_dic) %>% d
 #add date and turn into data.frame
 docnames(dfm_covid) <- docvars(dfm_covid, "Date")
 covid_terms_df <- convert(dfm_covid, to = "data.frame")
-
 covid_terms_df
 
 covid_terms_df <- covid_terms_df %>% mutate(total_freq = (crisis + enfermedad + virus + sanitaria + pandemia + covid))
-
 final_df <- left_join(covid_terms_df, covid_data_df)
-
 final_df
 ```
 ```{r}
