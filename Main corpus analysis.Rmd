@@ -182,3 +182,26 @@ dfm_covid_2020
 ##dfm_covid_2020 %>% adorn_totals(dfm_covid_2020, "row") - not sure what is wrong here
 ```
 
+
+
+
+
+
+
+
+
+```{r}
+library(readr)
+
+covid_data_df<-read.csv("https://covid19.who.int/WHO-COVID-19-global-data.csv") %>%
+  filter(Country == "Mexico") %>%
+  select(-Country_code,-Country,-WHO_region) %>%
+  rename(Date = Date_reported)
+
+covid_data_df
+
+```
+
+
+
+
