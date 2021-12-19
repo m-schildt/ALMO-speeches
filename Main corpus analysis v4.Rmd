@@ -1,0 +1,315 @@
+---
+title: "Corpus analysis"
+subtitle: "Exploration of frequency of terms in President Obrador's speeches"
+authors: "Marco Schildt, Santiago Sordo, Gülce Sena Tuncer"
+output: 
+  html_document:
+    toc: TRUE
+    df_print: paged
+    number_sections: FALSE
+    highlight: tango
+    theme: lumen
+    toc_depth: 3
+    toc_float: true
+    css: custom.css 
+    self_contained: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Parsing for analysis
+
+```{r, message=F, comment=F, eval = F}
+mydir = "speeches"
+#txtfiles = list.files(path=mydir, pattern="*.txt", full.names=TRUE)
+#txtfiles
+```
+
+```{r, message=F, comment=F}
+library(tidyr)
+library(stringr)
+library(dplyr)
+
+parse_amlo <- function(file) {
+  
+  date <- substring(file, 10,19)
+  try({
+    speech <- readChar(file, file.info(file)$size)
+
+    # This is the pattern that so far returns the speakers correctly
+    pattern <- "([ A-ZÀ-Ú])+:"
+    
+    # Those were examples, now do this for the whole file to prep the speech for splitting
+    prepped_speech <- str_replace_all(speech, pattern, "##\\0##")
+    
+    # This splits it row by row, but of course we need speaker and speech on the same column
+    parsed_speech <- as.data.frame(str_split(prepped_speech, "##"), col.names = "A")
+    
+    parsed_speech <- parsed_speech %>%
+      tail(-1)%>%  # remove first row  which has no speaker
+      mutate(variable = rep(c("Speaker", "Text"), nrow(parsed_speech) / 2), 
+           key = rep(1:(nrow(parsed_speech) / 2), each = 2)) %>%
+      pivot_wider(id_cols = key, names_from = variable, values_from = A) %>% # divide speaker and text in separate columns 
+      select(-key) %>% # remove helper 
+      group_by(Speaker) %>% 
+      summarize(Text = paste(Text, collapse = " ")) %>% # combine text of each speaker 
+      mutate(Date = date, .before = Speaker)
+    
+    
+    })
+  
+  return(parsed_speech)
+  
+  }
+
+#test <- parse_amlo(txtfiles[1])
+```
+
+```{r, message=F, comment=F}
+# creates list
+#sample = lapply(txtfiles, parse_amlo)
+# create data frame
+#sample_df <- do.call(rbind,lapply(txtfiles, parse_amlo))
+# write csv from data frame
+#write.csv(sample_df,"sample_df.csv")
+```
+
+```{r, message=F, comment=F}
+#load the df from the CSV
+sample_df2 <- read.csv(file = 'sample_df.csv', header = TRUE)%>%  
+      select(-X)
+```
+
+## Creating the main corpus and tokens
+
+```{r, message=F, comment=F}
+#create corpus with quanteda
+library("quanteda")
+main_corpus <- corpus(sample_df2, text_field = "Text")
+summary(main_corpus)
+
+#create corpus with "Month" grouping
+docvars(main_corpus, field = "Month") <- substring(docvars(main_corpus, field = "Date"), 1,7)
+```
+
+##Preparing tokens and subsets for main corpus
+
+```{r, message=F, comment=F}
+#clean and create tokens for main corpus
+main_tokens <- tokens(main_corpus, remove_punct = TRUE, remove_numbers = TRUE)
+main_tokens <- tokens_select(main_tokens, stopwords('spanish'), selection='remove')
+main_tokens_dfm <- dfm(main_tokens)
+
+#top features of main corpus (without subsets)
+topfeatures(main_tokens_dfm, 50)
+```
+
+```{r, message=F, comment=F}
+#subsets with main corpus
+#subset for president's speeches - 663 docs
+subset_president <- (corpus_subset(main_corpus, Speaker == "PRESIDENTE ANDRÉS MANUEL LÓPEZ OBRADOR:"))
+
+#subset for 2020 and 2021 - 418 docs
+subset_president_interim <- (corpus_subset(subset_president, Date > "2019-12-31"))
+
+#subset for 2020 - 223 docs
+subset_president_2020 <- (corpus_subset(subset_president_interim, Date < "2021-01-01"))
+summary(subset_president_2020)
+
+#subset for 2021 - 195 docs
+subset_president_2021 <- (corpus_subset(subset_president, Date > "2020-12-31"))
+summary(subset_president_2021)
+```
+
+## 1) Exploration of top terms in President Obrador's speeches
+
+Our first section looks at the frequency of terms by President Obrador to see 1) if there is any particular theme around the terms 2) if covid related terms are discussed and 3) how 2020 and 2021 results differ from one another. We use frequency plots for 2020 and 2021 in order to visualize the frequency of the terms.
+
+```{r, message=F, comment=F}
+library("quanteda.textstats")
+library("quanteda.textplots")
+library("ggplot2")
+
+#tokens and df for 2020
+tokens_president_2020 <- tokens(subset_president_2020, remove_punct = TRUE, remove_numbers = TRUE)
+tokens_president_2020 <- tokens_select(tokens_president_2020, stopwords('spanish'), selection='remove')
+tokens_president_2020 <- tokens_remove(tokens_president_2020, c("+"))
+tokens_president_2020 <- tokens_tolower(tokens_president_2020)
+dfm_president_2020 <- dfm(tokens_president_2020)
+
+#tokens and df for 2021
+tokens_president_2021 <- tokens(subset_president_2021, remove_punct = TRUE, remove_numbers = TRUE)
+tokens_president_2021 <- tokens_select(tokens_president_2021, stopwords('spanish'), selection='remove')
+tokens_president_2021 <- tokens_remove(tokens_president_2021, c("+"))
+tokens_president_2021 <- tokens_tolower(tokens_president_2021)
+dfm_president_2021 <- dfm(tokens_president_2021)
+
+```
+
+```{r, message=F, comment=F}
+#plot top features frequency
+dfm_features <- textstat_frequency(dfm_president_2020, n = 50)
+dfm_features$feature <- with(dfm_features, reorder(feature, -frequency))
+
+ggplot(dfm_features, aes(x = feature, y = frequency)) +
+    geom_point() + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    labs(title = "Top terms by President Obrador in 2020",
+        y = "Frequency", x = "Term") +
+    theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
+        plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
+        plot.caption = element_text(size = 7, color = "azure4", vjust = -2),
+        axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
+        axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2),
+        panel.background = element_rect(fill = 'white'),
+        panel.grid.major = element_line(colour = "grey", size = 0.3),
+        panel.grid.minor = element_line(colour = "grey", size = 0.2))
+```
+```{r, message=F, comment=F}
+#plot top features frequency
+dfm_features_2 <- textstat_frequency(dfm_president_2021, n = 50)
+dfm_features_2$feature <- with(dfm_features_2, reorder(feature, -frequency))
+
+ggplot(dfm_features_2, aes(x = feature, y = frequency)) +
+    geom_point() + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    labs(title = "Top terms by President Obrador in 2021",
+        y = "Frequency", x = "Term") +
+    theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
+        plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
+        plot.caption = element_text(size = 7, color = "azure4", vjust = -2),
+        axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
+        axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2),
+        panel.background = element_rect(fill = 'white'),
+        panel.grid.major = element_line(colour = "grey", size = 0.3),
+        panel.grid.minor = element_line(colour = "grey", size = 0.2))
+```
+
+**Discussion of results #1**
+```
+President Obrador's top 50 terms differ only slightly, with important themes being corruption, xxx, yyy. It is especially interesting to see, covid terms are not in top 50 terms in both years...
+```
+
+## 2) Frequency and lexical dispersion analysis of covid related terms by month
+
+In order to analyze how often covid related terms show up in President's speech, we start off by creating a frequency table and plot for possible related terms, and later use lexical dispersion plots for understanding their occurrences.
+
+Lexical dispersion marks the occurrence of terms over time and helps us visualize the frequency of these terms (like an x-ray machine). The x-axis represents the token index, whereas y-axis can be used for grouping (either time periods or different sources of material). Token index is relative or absolute, depending on whether the same text is used for comparison.
+
+```{r}
+#covid related freq plots
+freq_interim <- subset_president_interim %>% tokens(groups = subset_president_interim$Date) %>% dfm() %>% textstat_frequency()
+
+# filter the terms
+freq_pandemia <- subset(freq_interim, freq_interim$feature %in% "pandemia")
+freq_virus <- subset(freq_interim, freq_interim$feature %in% "virus")
+freq_covid <- subset(freq_interim, freq_interim$feature %in% "covid")
+freq_coronavirus <- subset(freq_interim, freq_interim$feature %in% "coronavirus")
+freq_sanitaria <- subset(freq_interim, freq_interim$feature %in% "sanitaria")
+freq_cuarentena <- subset(freq_interim, freq_interim$feature %in% "cuarentena")
+freq_enfermedad <- subset(freq_interim, freq_interim$feature %in% "enfermedad")
+
+freq_plot <- rbind(freq_pandemia, freq_virus, freq_covid, freq_coronavirus, freq_sanitaria, freq_cuarentena, freq_enfermedad)
+
+freq_plot$feature <- with(freq_plot, reorder(feature, -frequency))
+
+freq_plot
+
+ggplot(freq_plot, aes(x = feature, y = frequency)) +
+    geom_point() + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    labs(title = "Frequency of covid related terms in 2020-2021",
+        y = "Frequency", x = "Term") +
+    theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 8, 0)),
+        plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
+        plot.caption = element_text(size = 7, color = "azure4", vjust = -2),
+        axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
+        axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2),
+        panel.background = element_rect(fill = 'white'),
+        panel.grid.major = element_line(colour = "grey", size = 0.3),
+        panel.grid.minor = element_line(colour = "grey", size = 0.2))
+```
+
+
+We group our corpus by Month to see how specific terms were used more or less frequently over periods of time.
+
+```{r}
+#group by month
+grouped_corpus <- corpus_group(subset_president_interim, groups = Month)
+summary(grouped_corpus)
+```
+And later, we pick the top words among covid terms and plot for lexical dispersions.
+
+```{r}
+#create tokens
+grouped_tokens <- tokens(grouped_corpus)
+
+#plot lexical dispersions
+textplot_xray(
+     kwic(grouped_tokens, pattern = "pandemia"),
+     kwic(grouped_tokens, pattern = "covid"),
+     kwic(grouped_tokens, pattern = "coronavirus")) +
+  aes(color = keyword) + 
+  scale_color_manual(values = c("blue", "red", "green")) +
+  labs(title = "Lexical dispersion plot of covid related terms by President Obrador") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
+        legend.position = "none")
+```
+**Discussion of results**
+```
+Words pandemia and covid appear often whereas... Coronavirus changes its name and becomes covid, he never calls it coronavirus in 2021.
+```
+
+## 3) President Obrador's covid related terms vs number of new covid cases in Mexico
+
+Our main purpose here is to observe whether President's speeches on covid is aligned with the concern over increasing cases and the spread of the disease. In order to do this, we get covid data from World Health Organization (WHO) and compare the number of new cases in Mexico to covid terms in President's speech.
+
+```{r, message=F, comment=F}
+#get covid case data
+library("readr")
+
+covid_data_df<-read.csv("https://covid19.who.int/WHO-COVID-19-global-data.csv") %>%
+  filter(Country == "Mexico") %>%
+  select(-Country_code,-Country,-WHO_region) %>%
+  rename(doc_id = Date_reported)
+```
+
+```{r, message=F, comment=F}
+#matrix for covid related terms in 2020 and 2021
+covid_dic <- dictionary(list(all_terms = c("pandemia", "covid", "coronavirus")))
+dfm_covid <- tokens(subset_president_interim) %>% tokens_select(covid_dic) %>% dfm()
+
+#add date and turn into data.frame
+docnames(dfm_covid) <- docvars(dfm_covid, "Date")
+covid_terms_df <- convert(dfm_covid, to = "data.frame")
+covid_terms_df
+
+covid_terms_df <- covid_terms_df %>% mutate(total_freq = (pandemia + covid + coronavirus))
+final_df <- left_join(covid_terms_df, covid_data_df)
+final_df
+```
+
+```{r}
+#plot data
+coef <- 1000 #value used to transform the data for a second y-axis
+
+ggplot(final_df, aes(x=doc_id)) +
+  geom_point( aes(y=total_freq), size=0.2, color = "darkred") + 
+  geom_point( aes(y=New_cases / coef), size=0.2, color="steelblue") +
+  scale_y_continuous(name = "Frequency of covid related terms", sec.axis = sec_axis(~.*coef, name="Number of new cases")) + 
+    labs(title = "President Obrador's Covid Related Remarks vs\nNumber of New Covid Cases in Mexico",
+        x = "Date") +
+    theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
+        plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
+        plot.caption = element_text(size = 7, color = "azure4", vjust = -2),
+        axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
+        axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2))
+```
+
+**Discussion of results**
+```
+Who data is/is not aligned with speech...
+```
