@@ -24,3 +24,4 @@ write.csv(speeches_df,"Data/aggregated/speeches.csv")
 
 
 
+

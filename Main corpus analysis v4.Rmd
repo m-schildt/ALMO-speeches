@@ -22,64 +22,26 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Parsing for analysis
 
 ```{r, message=F, comment=F, eval = F}
-mydir = "speeches"
-#txtfiles = list.files(path=mydir, pattern="*.txt", full.names=TRUE)
-#txtfiles
-```
-
-```{r, message=F, comment=F}
 library(tidyr)
 library(stringr)
 library(dplyr)
 
-parse_amlo <- function(file) {
-  
-  date <- substring(file, 10,19)
-  try({
-    speech <- readChar(file, file.info(file)$size)
-
-    # This is the pattern that so far returns the speakers correctly
-    pattern <- "([ A-ZÀ-Ú])+:"
-    
-    # Those were examples, now do this for the whole file to prep the speech for splitting
-    prepped_speech <- str_replace_all(speech, pattern, "##\\0##")
-    
-    # This splits it row by row, but of course we need speaker and speech on the same column
-    parsed_speech <- as.data.frame(str_split(prepped_speech, "##"), col.names = "A")
-    
-    parsed_speech <- parsed_speech %>%
-      tail(-1)%>%  # remove first row  which has no speaker
-      mutate(variable = rep(c("Speaker", "Text"), nrow(parsed_speech) / 2), 
-           key = rep(1:(nrow(parsed_speech) / 2), each = 2)) %>%
-      pivot_wider(id_cols = key, names_from = variable, values_from = A) %>% # divide speaker and text in separate columns 
-      select(-key) %>% # remove helper 
-      group_by(Speaker) %>% 
-      summarize(Text = paste(Text, collapse = " ")) %>% # combine text of each speaker 
-      mutate(Date = date, .before = Speaker)
-    
-    
-    })
-  
-  return(parsed_speech)
-  
-  }
-
-#test <- parse_amlo(txtfiles[1])
 ```
 
 ```{r, message=F, comment=F}
-# creates list
-#sample = lapply(txtfiles, parse_amlo)
-# create data frame
-#sample_df <- do.call(rbind,lapply(txtfiles, parse_amlo))
-# write csv from data frame
-#write.csv(sample_df,"sample_df.csv")
+
+
+
+```
+
+```{r, message=F, comment=F}
+
+
 ```
 
 ```{r, message=F, comment=F}
 #load the df from the CSV
-sample_df2 <- read.csv(file = 'sample_df.csv', header = TRUE)%>%  
-      select(-X)
+sample_df2 <- read.csv(file = 'Data/aggregated/speeches.csv', header = TRUE)
 ```
 
 ## Creating the main corpus and tokens
@@ -89,7 +51,7 @@ We use the package quanteda for the analysis of the speeches. Quanteda uses corp
 ```{r, message=F, comment=F}
 #create corpus with quanteda
 library("quanteda")
-main_corpus <- corpus(sample_df2, text_field = "Text")
+main_corpus <- corpus(sample_df2, text_field = "speech")
 summary(main_corpus)
 
 #create corpus with "Month" grouping
@@ -203,6 +165,26 @@ President Obrador's top 50 terms differ only slightly, with important themes bei
 In order to analyze how often covid related terms show up in President's speech, we start off by creating a frequency table and plot for possible related terms, and later use lexical dispersion plots for understanding their occurrences.
 
 Lexical dispersion marks the occurrence of terms over time and helps us visualize the frequency of these terms (like an x-ray machine). The x-axis represents the token index, whereas y-axis can be used for grouping (either time periods or different sources of material). Token index is relative or absolute, depending on whether the same text is used for comparison.
+
+
+
+
+```{r}
+# corona virus Vocabulary in Spanish
+library(rvest)
+url_voc <- read_html("https://www.spanish.academy/blog/coronavirus-vocabulary-in-spanish/")
+tables <- html_table(url_voc, header = TRUE, fill = TRUE)
+covid_terms <- tables[[1]] %>%
+  dplyr::select(Spanish) %>%
+  word(1)
+
+library(stringr)
+
+```
+
+
+
+
 
 ```{r}
 #covid related freq plots
