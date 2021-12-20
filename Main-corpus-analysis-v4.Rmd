@@ -35,6 +35,10 @@ Scraping: we scrape all available press conferences and store them as text files
 Parsing: we will parse the conferences to produce data frames containing speaker and speech.
 Analysis: we will perform a thematic exploration of the corpus to gain insights into the role that the covid pandemic has played in the conferences.
 
+**Our work and the repository**
+
+To develop the project, we have created a parsing function that can be called by a scraper sript. The scraper script then obtains every available press conference transcript and downloads it into a text file. To document the project and provide a report, we have created explainers that walk you through our parser function, our scraper script and a helper aggregator function. Finally, a comprehensive walk-through of our analysis is also provided.
+
 **Contributors**
 
 Marco Schildt (mschildt@icloud.com)
@@ -43,6 +47,9 @@ Gülce Sena Tuncer (gulcesenatuncer@gmail.com)
 
 Santiago Sordo (odros@hotmail.com)
 
+**Statement of contributions**
+
+All contributors have equally participated in planning, designing, implementing and debugging the contents of this repository and the repository itself.
 
 ```{r, message=F, comment=F}
 library(tidyr)
@@ -115,11 +122,11 @@ library("quanteda.textplots")
 library("ggplot2")
 
 #tokens and df for 2020
-tokens_president_2020 <- subset_president_2020 %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% tokens_remove(c("+", "-")) %>% tokens_tolower()
+tokens_president_2020 <- subset_president_2020 %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% tokens_remove(c("+")) %>% tokens_tolower()
 dfm_president_2020 <- dfm(tokens_president_2020)
 
 #tokens and df for 2021
-tokens_president_2021 <- subset_president_2021 %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% tokens_remove(c("+", "-")) %>% tokens_tolower()
+tokens_president_2021 <- subset_president_2021 %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% tokens_remove(c("+")) %>% tokens_tolower()
 dfm_president_2021 <- dfm(tokens_president_2021)
 
 ```
@@ -192,13 +199,12 @@ freq_interim <- subset_president_interim %>% tokens() %>% dfm() %>% textstat_fre
 freq_pandemia <- subset(freq_interim, freq_interim$feature %in% "pandemia")
 freq_virus <- subset(freq_interim, freq_interim$feature %in% "virus")
 freq_covid <- subset(freq_interim, freq_interim$feature %in% "covid")
-freq_corona <- subset(freq_interim, freq_interim$feature %in% "corona")
 freq_coronavirus <- subset(freq_interim, freq_interim$feature %in% "coronavirus")
 freq_sanitaria <- subset(freq_interim, freq_interim$feature %in% "sanitaria")
 freq_cuarentena <- subset(freq_interim, freq_interim$feature %in% "cuarentena")
 freq_enfermedad <- subset(freq_interim, freq_interim$feature %in% "enfermedad")
 
-freq_plot <- rbind(freq_pandemia, freq_virus, freq_covid, freq_corona, freq_coronavirus, freq_sanitaria, freq_cuarentena, freq_enfermedad)
+freq_plot <- rbind(freq_pandemia, freq_virus, freq_covid, freq_coronavirus, freq_sanitaria, freq_cuarentena, freq_enfermedad)
 
 freq_plot$feature <- with(freq_plot, reorder(feature, -frequency))
 
@@ -285,7 +291,7 @@ ggplot(final_df, aes(x=doc_id)) +
   geom_point( aes(y=total_freq), size=0.2, color = "darkred") + 
   geom_point( aes(y=New_cases / coef), size=0.2, color="steelblue") +
   scale_y_continuous(name = "Frequency of covid related terms", sec.axis = sec_axis(~.*coef, name = "Number of new cases")) + 
-    labs(title = "President Obrador's COVID-19 Related Remarks vs\nNumber of New COVID-19 Cases in Mexico",
+    labs(title = "President Obrador's Covid Related Remarks vs\nNumber of New Covid Cases in Mexico",
         x = "Date") +
     theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
         plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
