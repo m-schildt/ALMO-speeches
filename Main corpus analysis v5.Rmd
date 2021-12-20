@@ -26,28 +26,13 @@ Assuming office on 1 December 2018, the incumbent Mexican president, Andrés Man
 
 Every press conference is transcribed and published online in a blog-like fashion; this is one of the sites where they are published. In order to enable the aforementioned analyses -our own and those of any other interested party-, collecting them as text files is a necessary first step. To further facilitate analysis, a basic parsing of the press conferences in order to detect speakers and remarks would also be required.
 
-**The project**
-
-For our final data science project -but also to enable wider research into the matter-, we have scraped all available conferences and parsed them into a useful format. To demonstrate the usability of the parsed conferences, we have also performed an analysis of the resulting corpus. Concretely, the project consists of three -two technical and one analytical- components:
-
-Scraping: we scrape all available press conferences and store them as text files.
-Parsing: we will parse the conferences to produce data frames containing speaker and speech.
-Analysis: we will perform a thematic exploration of the corpus to gain insights into the role that the covid pandemic has played in the conferences.
-
-**Contributors**
-
-Marco Schildt (mschildt@icloud.com)
-
-Gülce Sena Tuncer (gulcesenatuncer@gmail.com)
-
-Santiago Sordo (odros@hotmail.com)
-
-
 ```{r, message=F, comment=F}
-library(tidyr)
-library(stringr)
-library(dplyr)
+library(tidyverse)
 library(knitr)
+library(quanteda)
+library(quanteda.textstats)
+library(quanteda.textplots)
+library(gridExtra)
 ```
 
 ```{r, message=F, comment=F}
@@ -65,7 +50,6 @@ We start our analysis by turning the files into a corpus with 5748 documents, us
 
 ```{r, message=F, comment=F}
 #create corpus with quanteda
-library("quanteda")
 main_corpus <- corpus(sample_df2, text_field = "speech")
 summary(main_corpus)
 
@@ -75,19 +59,9 @@ docvars(main_corpus, field = "Month") <- substring(docvars(main_corpus, field = 
 
 ## Creating subsets of the main corpus
 
-Before we move on to the subsetting, we tokenize the main corpus. [@ Marco & Santiago: I don't remember why I did this, as this tokenization includes everyone and every date - unless we find an explanation/purpose we can get rid of it.]
+As we will be focusing on subsets of the main corpus, specifically on statements given by the President during 2020 and 2021, we create multiple subsets of necessary corpuses. These include all statements by the President, statements by the President in 2020 and 2021, and statements by the President in each year. As shown on the summaries of these corpuses, we observe that AMLO has spoken on 223 instances in 2020, and on 196 instances in 2021.
 
-```{r, message=F, comment=F}
-#clean and create tokens for main corpus
-main_tokens_dfm <- main_corpus %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% dfm()
-
-#top features of main corpus (without subsets)
-topfeatures(main_tokens_dfm, 50)
-```
-
-As we will be focusing on subsets of the main corpus, specifically on statements given by the President during 2020 and 2021, we create multiple subsets of necessary corpuses. These include all statements by the President, statements by the President in 2020 and 2021, and statements by the President in each year. As shown on the summaries of these corpuses, we observe that President Obrador has spoken on 223 instances in 2020, and on 196 instances in 2021.
-
-```{r, message=F, comment=F}
+```{r}
 #subset for president's speeches - 634 docs
 subset_president <- (corpus_subset(main_corpus, speaker == "Presidente Andrés Manuel López Obrador"))
 
@@ -103,15 +77,11 @@ subset_president_2021 <- (corpus_subset(subset_president, Date > "2020-12-31"))
 summary(subset_president_2021)
 ```
 
-## 1) Exploration of top terms in President Obrador's speeches
+## 1) Exploration of top terms in AMLO's speeches
 
-Our first section looks at the frequency of words stated by President Obrador to see 1) if there is any particular theme around the terms 2) how 2020 and 2021 results differ from one another 3) if COVID-19 related terms are discussed. We start off by tokenizing the relevant subsets, turning the tokens into document-feature matrices, and later use frequency plots for 2020 and 2021 in order to visualize the list of terms.
+Our first section looks at the frequency of words stated by AMLO to see 1) if there is any particular theme around the terms 2) how 2020 and 2021 results differ from one another 3) if COVID-19 related terms are discussed. We start off by tokenizing the relevant subsets, turning the tokens into document-feature matrices, and later use frequency plots for 2020 and 2021 in order to visualize the list of terms.
 
 ```{r, message=F, comment=F}
-library("quanteda.textstats")
-library("quanteda.textplots")
-library("ggplot2")
-
 #tokens and df for 2020
 tokens_president_2020 <- subset_president_2020 %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% tokens_remove(c("+", "-")) %>% tokens_tolower()
 dfm_president_2020 <- dfm(tokens_president_2020)
@@ -119,24 +89,23 @@ dfm_president_2020 <- dfm(tokens_president_2020)
 #tokens and df for 2021
 tokens_president_2021 <- subset_president_2021 %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% tokens_remove(c("+", "-")) %>% tokens_tolower()
 dfm_president_2021 <- dfm(tokens_president_2021)
-
 ```
 
 ```{r, message=F, comment=F}
 #plot top features frequency
 dfm_features <- textstat_frequency(dfm_president_2020, n = 50)
-dfm_features$feature <- with(dfm_features, reorder(feature, -frequency))
+dfm_features$feature <- with(dfm_features, reorder(feature, +frequency))
 
-ggplot(dfm_features, aes(x = feature, y = frequency)) +
+ggplot(dfm_features, aes(x = frequency, y = feature)) +
     geom_point() + 
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    labs(title = "Top terms by President Obrador in 2020",
+    labs(title = "Top terms by AMLO in 2020",
         y = "Frequency", x = "Term") +
     theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
         plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
         plot.caption = element_text(size = 7, color = "azure4", vjust = -2),
         axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
         axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2),
+        axis.text.y = element_text(size = 6),
         panel.background = element_rect(fill = 'white'),
         panel.grid.major = element_line(colour = "grey", size = 0.3),
         panel.grid.minor = element_line(colour = "grey", size = 0.2))
@@ -144,28 +113,36 @@ ggplot(dfm_features, aes(x = feature, y = frequency)) +
 ```{r, message=F, comment=F}
 #plot top features frequency
 dfm_features_2 <- textstat_frequency(dfm_president_2021, n = 50)
-dfm_features_2$feature <- with(dfm_features_2, reorder(feature, -frequency))
+dfm_features_2$feature <- with(dfm_features_2, reorder(feature, +frequency))
 
-ggplot(dfm_features_2, aes(x = feature, y = frequency)) +
+ggplot(dfm_features_2, aes(x = frequency, y = feature)) +
     geom_point() + 
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    labs(title = "Top terms by President Obrador in 2021",
+    labs(title = "Top terms by AMLO in 2021",
         y = "Frequency", x = "Term") +
     theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
         plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
         plot.caption = element_text(size = 7, color = "azure4", vjust = -2),
         axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
         axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2),
+        axis.text.y = element_text(size = 6),
         panel.background = element_rect(fill = 'white'),
         panel.grid.major = element_line(colour = "grey", size = 0.3),
         panel.grid.minor = element_line(colour = "grey", size = 0.2))
 ```
 
-*Discussion goes here:* President Obrador's top 50 terms differ only slightly, with important themes being corruption, xxx, yyy. It is especially interesting to see, covid terms are not in top 50 terms in both years...
+While we don't have any formal training whatsoever in linguistics or discourse analysis, word frequencies already hint us in very interesting directions. As we can see from the plots, the top terms don't change much between 2020 and 2021. Perhaps the changing ranks of two terms stand out: 'salud' and 'corrupción'. 
+
+The only term that could be interpreted as relating to the pandemic is 'salud', meaning 'health'. The term ranks 35 in 2020 but leaves the top 50 completely in 50. Whether this is telling of the importance the pandemic had within the administration is an open question, but AMLO has in fact been criticized for downplaying it. As to 'corrupción' -meaning of course 'corruption'-, the term's rank falls from 29 in 2020 all the way to 38 in 2021. Fighting corruption is one of the key elements of the president's rhetoric. It would be interesting to see what happened in 2019 to see if there are signs of a decreasing trend on this respect.
+
+Since the rest of the terms don't change much year to year, the following discussion applies to the whole corpus. The top term in 2020 is 'vamos', raking 2 in 2021, which is the plural first person, present tense conjugation for the verb 'ir', which means 'to go'. This can be translated as 'we go', but is also a helper form that is used to express future tense. This is quite interesting, as it would indicate that much of what the president says is prospective and spoken from a plural perspective, possibly indicating the plans his administration and party has for the country, but also a collective approach to thing, which fits his party's leftist ideology. The same can be said of term 'va', consistently ranking 4, which is the third person singular conjugation of the same verb and is used in the same fashion. This means both terms are pointing to the future. Grouping both together would only exacerbate the prospective nature of AMLOs remarks.
+
+Another interesting trend at the top are terms 'entonces' and 'si', meaning 'then' and 'if' respectively. These are conditional clauses, which could be pointing to hypothetical thinking if they're actually appearing together, but also if they do so separately. This all adds to a prospective gist in the presidents discourse. Finally, 'gobierno' ('government') and 'pueblo' (roughly 'the people') appear consistently on ranks 9 and 10 respectively. This is consistent with the president's platform, which is centered around 'the people'. Putting any hypothesis around the term 'gobierno' is risky, but this is in fact considered a very self-referential administration by experts, if it is telling of anything.
+
+Finally, the country has been undergoing a very serious security crisis that hasn't relented another AMLO. There is an ongoing war among organized crime groups, with murders, missing people, femicides, attacks on journalists and activists at all time highs. It is striking to see that no words that would directly refer us to this problem are amongst the top ranked.
 
 ## 2) Frequency and lexical dispersion analysis of COVID-19 related terms by month
 
-In order to analyze how often COVID-19 related terms show up in President's speech, we start off by creating a data frame for frequency of possible related terms. We get a data frame with 13 words that we identified as related to COVID-19. We plot this data frame to get a visual representation of their frequency. Later, we use lexical dispersion plots for understanding their occurrences.
+In order to analyze how often COVID-19 related terms show up in President's speech, we start off by creating a data frame for frequency of possible related terms. We get a data frame with 14 words that we identified as related to COVID-19. We plot this data frame to get a visual representation of their frequency. Later, we use lexical dispersion plots for understanding their occurrences.
 
 Lexical dispersion marks the occurrence of terms over time and helps us visualize the frequency of these terms (like an x-ray machine). The x-axis represents the token index, whereas y-axis can be used for grouping (either time periods or different sources of material). Token index is relative or absolute, depending on whether the same text is used for comparison.
 
@@ -187,18 +164,18 @@ freq_infeccion <- subset(freq_interim, freq_interim$feature %in% "infección")
 freq_distancia <- subset(freq_interim, freq_interim$feature %in% "distancia")
 freq_confinamiento <- subset(freq_interim, freq_interim$feature %in% "confinamiento")
 freq_hospital <- subset(freq_interim, freq_interim$feature %in% "hospital")
+freq_salud <- subset(freq_interim, freq_interim$feature %in% "salud")
 
 
-freq_plot <- rbind(freq_pandemia, freq_virus, freq_covid, freq_corona, freq_coronavirus, freq_sanitaria, freq_cuarentena, freq_enfermedad, freq_brote, freq_infeccion, freq_distancia, freq_confinamiento, freq_hospital)
+freq_plot <- rbind(freq_pandemia, freq_virus, freq_covid, freq_corona, freq_coronavirus, freq_sanitaria, freq_cuarentena, freq_enfermedad, freq_brote, freq_infeccion, freq_distancia, freq_confinamiento, freq_hospital, freq_salud)
 
-freq_plot$feature <- with(freq_plot, reorder(feature, -frequency))
+freq_plot$feature <- with(freq_plot, reorder(feature, +frequency))
 
 freq_plot
 
-ggplot(freq_plot, aes(x = feature, y = frequency)) +
+ggplot(freq_plot, aes(x = frequency, y = feature)) +
     geom_point() + 
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    labs(title = "Frequency of covid related terms in 2020-2021",
+    labs(title = "Frequency of COVID-19 related terms in 2020-2021",
         y = "Frequency", x = "Term") +
     theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 8, 0)),
         plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
@@ -226,29 +203,39 @@ grouped_tokens <- tokens(grouped_corpus)
 
 #plot lexical dispersions
 textplot_xray(
+    kwic(grouped_tokens, pattern = "salud"),
      kwic(grouped_tokens, pattern = "pandemia"),
      kwic(grouped_tokens, pattern = "covid"),
      kwic(grouped_tokens, pattern = "hospital"),
-     kwic(grouped_tokens, pattern = "coronavirus"),
-     kwic(grouped_tokens, pattern = "distancia"))+
+     kwic(grouped_tokens, pattern = "coronavirus"))+
   aes(color = keyword) + 
   scale_color_manual(values = c("#56B4E9", "#D55E00", "#009E73", "#E69F00", "#CC79A7")) +
-  labs(title = "Lexical dispersion plot of covid related terms by President Obrador") +
+  labs(title = "Lexical dispersion plot of covid related terms by AMLO") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
         plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
         legend.position = "none")
 ```
 
-*Discussion goes here:* Words pandemia and covid appear often whereas... Coronavirus changes its name and becomes covid, he never calls it coronavirus in 2021.
+The lexical dispersion plot lets us see how often each term appears in the corpus. For any given term, each cell represents a month. Since different months have different lengths and there are some days where no press conferences took place, the horizontal axis has been normalized using a relative token index. The small vertical lines indicate instances of each term being mentioned by President AMLO during his participation in the conferences. The more of these lines a given cell has, the more frequent the appearance of the term.
+
+As we can see from the plot, the term 'salud' ('health') is the one appearing the most, even before the pandemic was declared on March. It is unclear to us why this is the case. However, it is clear the importance of the term dwindles down as time progresses. Hence, we can speculate some correlation as it appears intensively over the first outbreak, the term is too general to have a certain conclusion.
+
+The term 'hospital', being more general, is a hard to unambiguously interpret. As with 'salud', there is important density at the beginning of 2020, then it seems to disappear from the president's discourse for a while, only to come back with less strength. As we can also see, the first three panels exhibit a clear decreasing gradient. This doesn't seem the case for 'hospital', which seems missing between May and September. This creates more questions than answers, but serves to illustrate what our analysis is able to unveil.
+
+On March 11, 2020, the World Health Organization declared COVID-19 a global pandemic. Accordingly, the term 'pandemia' only starts showing up then, with a stark concentration on May. At least visually, this term shows the clearest "dilution" pattern as time evolves, possibly reflecting the trend of covid cases most accurately among these five terms.
+
+The panel for term 'coronavirus' tells an interesting story. We can see it very frequently in March and April, even somewhat importantly in May. However, the term disappears from the scene afterwards, reflecting the move away from the term. Conspiracy theorists say this has something to do to damage being done to the Corona beer, which happens to be Mexican. Jokes aside, it is very interesting to see the term is the very first pandemic-specific (hospital and health are more general) to enter the scene, doing so in mid January.
+
+Yet over the month of May, it seems that it is replaced by 'covid', as it was the case for the rest of the world. Not making an appearance until April, 'covid' takes over the job from 'coronavirus' by the summer of 2020. The intensity significantly increases over next winter months, and dwindles down after May of 2021. In the last few months of 2021, 'covid' rarely makes an appearance in AMLO's speeches.
+
+This visualization proved a very useful tool in illustrating the "intensity" of President AMLO's focus on them as it serves as a very nice condensation of our hard work. 
 
 ## 3) Exploring the trend between COVID-19 related terms and number of new cases in Mexico
 
-Our main purpose here is to observe whether President's statements on COVID-19 is aligned with the concern over increasing cases and the spread of the disease. In order to do this, we get COVID-19 data from World Health Organization (WHO) and compare the number of new cases in Mexico to COVID-19 terms that appear in President Obrador's speeches.
+Our main purpose here is to observe whether President's statements on COVID-19 is aligned with the concern over increasing cases and the spread of the disease. In order to do this, we get COVID-19 data from World Health Organization (WHO) and compare the number of new cases in Mexico to COVID-19 terms that appear in AMLO's speeches.
 
 ```{r, message=F, comment=F}
 #get covid case data
-library("readr")
-
 covid_data_df<-read.csv("https://covid19.who.int/WHO-COVID-19-global-data.csv") %>%
   filter(Country == "Mexico") %>%
   select(-Country_code,-Country,-WHO_region) %>%
@@ -268,24 +255,48 @@ covid_terms_df
 covid_terms_df <- covid_terms_df %>% mutate(total_freq = (pandemia + covid + coronavirus))
 final_df <- left_join(covid_terms_df, covid_data_df)
 final_df
+
+weekly_df <- final_df %>%
+  mutate(Month = substring(doc_id , 1,7))%>%
+  group_by(Month)%>%
+    summarise_at(.vars = vars(total_freq,New_cases, New_deaths),
+               .funs = c(mean="mean"))
 ```
 
 ```{r}
-#plot data
-coef <- 1000 #value used to transform the data for a second y-axis
+coef <- 1000
 
-ggplot(final_df, aes(x=doc_id)) +
-  geom_point( aes(y=total_freq), size=0.2, color = "darkred") + 
-  geom_point( aes(y=New_cases / coef), size=0.2, color="steelblue") +
-  scale_y_continuous(name = "Frequency of covid related terms", sec.axis = sec_axis(~.*coef, name = "Number of new cases")) + 
-    labs(title = "President Obrador's COVID-19 Related Remarks vs\nNumber of New COVID-19 Cases in Mexico",
-        x = "Date") +
-    theme(plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
-        plot.subtitle = element_text(size = 10, color = "azure4", margin = margin(0, 0, 10, 0)),
-        plot.caption = element_text(size = 7, color = "azure4", vjust = -2),
-        axis.title.x = element_text(size = 8, color = "azure4", vjust = -2),
-        axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2))
+#weekly cases
+weekly_cases <- ggplot(weekly_df, aes(x=Month)) +
+  geom_point( aes(y=New_cases_mean), size=0.2, color = "red") + 
+  scale_y_continuous(name = "Number of new COVID-19 \ncases in Mexico") + 
+  theme_light()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#weekly freq
+weekly_freq <- ggplot(weekly_df, aes(x=Month)) +
+  geom_point( aes(y=total_freq_mean), size=0.2, color = "red") + 
+  scale_y_continuous(name = "Frequency of\nCOVID-19 \nrelated terms") + 
+  theme_light()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(weekly_cases,
+             weekly_freq, 
+             ncol = 1, 
+             top = "AMLO's COVID-19 related remarks vs\nnew COVID-19 cases in Mexico (monthly means)")
 ```
 
-*Discussion goes here:* Who data is/is not aligned with speech...
+
+
+Finally, the last plot allows us to tackle our main question, which was how connected was President AMLO's rhetoric to the developments in the pandemic, as measured by new cases. To interpret this graph, we care more about the shapes than anything else.
+
+As we can see, while the plots are far from following each other perfectly, both graphs seem to bee importantly correlated from January 2020 until around June, 2021. We dare to venture this interpretation because both are roughly "bimodal" until then, or at leas exhibit peaks around the same time. Importantly, both show growing trends from at least October, 2021 and peak on January, 2021 to later fall. This is where the similarities end.
+
+As we can see from the top panel, August, 2021 exhibits the largest mean number of cases in the whole plot, meaning the pandemic had reached a very severe point. One would expect the president's discourse to at least peak then, if not have its own largest peak, but it doesn't do either. The combinen frequencies of the terms most specifically related to the pandemic -covid, pandemic and coronavirus- do not follow the severity of the health crisis.
+
+While venturing hypotheses is risky, it is the kind of exercise that is able to produce stories. A poorly objective pro-AMLO journalist might interpret this as an attempt to bring the country back to normality, and a way to avoid the confluence of factors that made 2020 one of the worst years in economic terms for the country. An unprofessional anti-AMLO researcher might see this as irresponsible conduct which fosters the spread of the virus and endangers human lives.
+
+Since we are neither, and we aspire to become data scientists that work for the advancement of the public good, we can only say there is a disconnect here. However, let us say this. Being able to compare this two plots and objectively show this disconnect exists is already a success. By traversing the data science pipeline of scraping, parsing, analyzing and communicating, we went from what were pretty much blog-posts online to the very interesting aforementioned fact. Moreover, the potencial of every intermediate product -the text files, the parsed speeches, the aggregation- is enormous if properly channeled.
+
+Our work needs a lot of polishing, yes. But we believe it showcases a lot of the things we have learned during the course, others we have sought and others stumbled upon along the way, and works non only as an illustration of our newly-acquired abilities as data scientists, but already as a very interesting prototype that could live on after the course.
 
