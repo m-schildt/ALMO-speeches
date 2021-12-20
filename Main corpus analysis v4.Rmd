@@ -63,9 +63,11 @@ library(knitr)
 sample_df2 <- read.csv(file = 'Data/aggregated/speeches.csv', header = TRUE) %>% select(-X)
 ```
 
-## Creating the main corpus and tokens
+## Goals and scope of the analysis
 
-For our analysis of the speeches, we take a total number of 650 files starting on 2018-12-11 and ending on 2021-12-15. Our goal is to explore any trends related to the COVID-19 pandemic that appear in Mexico's incumbent President Andrés Manuel López Obrador (AMLO). We define our scope as statements given by the President himself in 2020 and 2021. We are interested in understanding if COVID-19 was a prominent topic in president's press conferences, whether it received more or less attention overtime, and if the attention on the pandemic is aligned with urgency and vehemence of the cases.
+For our analysis of the speeches, we take a total number of 650 files starting on 2018-12-11 and ending on 2021-12-15. Our goal is to explore any trends related to the COVID-19 pandemic that appear in Mexico's incumbent President Andrés Manuel López Obrador's speeches. We define our scope as statements given by the President himself in 2020 and 2021. We are interested in understanding if COVID-19 was a prominent topic in president's press conferences, whether it received more or less attention overtime, and if the attention on the pandemic is aligned with urgency and vehemence of the cases.
+
+## Creating the main corpus
 
 We start our analysis by turning the files into a corpus with 5748 documents, using the r package `Quanteda`. Each document on the main corpus, represented as "Text", indicates everything said by a speaker on a particular date. Speakers who are not identified by name, such as those who appear as Pregunta, are aggregated as such. Total number of words is represented by "Tokens", whereas total number of unique tokens is represented by "Types". We also use the `docvars()` function in order to get the variable "Months" for future use.
 
@@ -79,7 +81,7 @@ summary(main_corpus)
 docvars(main_corpus, field = "Month") <- substring(docvars(main_corpus, field = "Date"), 1,7)
 ```
 
-##Preparing tokens and subsets for main corpus
+##Creating subsets of the main corpus
 
 Before we move on to the subsetting, we tokenize the main corpus. [@ Marco & Santiago: I don't remember why I did this, as this tokenization includes everyone and everydate - unless we find an explanation/purpose we can get rid of it.]
 
