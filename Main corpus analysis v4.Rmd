@@ -1,7 +1,7 @@
 ---
-title: "Corpus analysis"
-subtitle: "Exploration of frequency of terms in President Obrador's speeches"
-authors: "Marco Schildt, Santiago Sordo, Gülce Sena Tuncer"
+title: "Part III: Corpus analysis"
+subtitle: "Thematic exploration of the corpus in relation to the COVID-19 pandemic"
+author: "by Marco Schildt, Santiago Sordo, Gülce Sena Tuncer"
 output: 
   html_document:
     toc: TRUE
@@ -19,34 +19,55 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Parsing for analysis
+## Introduction
+
+**Context**
+
+Assuming office on 1 December 2018, the incumbent Mexican president, Andrés Manuel López Obrador (AMLO), is known for his daily early morning press conferences. In them, he discusses his administration’s policies, current events and the country’s state of affairs. The conferences have garnered a lot of attention from researchers, journalists and students, and there is a lot of interest in performing all sorts of analyses around them.
+
+Every press conference is transcribed and published online in a blog-like fashion; this is one of the sites where they are published. In order to enable the aforementioned analyses -our own and those of any other interested party-, collecting them as text files is a necessary first step. To further facilitate analysis, a basic parsing of the press conferences in order to detect speakers and remarks would also be required.
+
+**The project**
+
+For our final data science project -but also to enable wider research into the matter-, we have scraped all available conferences and parsed them into a useful format. To demonstrate the usability of the parsed conferences, we have also performed an analysis of the resulting corpus. Concretely, the project consists of three -two technical and one analytical- components:
+
+Scraping: we scrape all available press conferences and store them as text files.
+Parsing: we will parse the conferences to produce data frames containing speaker and speech.
+Analysis: we will perform a thematic exploration of the corpus to gain insights into the role that the covid pandemic has played in the conferences.
+
+**Our work and the repository**
+
+To develop the project, we have created a parsing function that can be called by a scraper sript. The scraper script then obtains every available press conference transcript and downloads it into a text file. To document the project and provide a report, we have created explainers that walk you through our parser function, our scraper script and a helper aggregator function. Finally, a comprehensive walk-through of our analysis is also provided.
+
+**Contributors**
+
+Marco Schildt (mschildt@icloud.com)
+
+Gülce Sena Tuncer (gulcesenatuncer@gmail.com)
+
+Santiago Sordo (odros@hotmail.com)
+
+**Statement of contributions**
+
+All contributors have equally participated in planning, designing, implementing and debugging the contents of this repository and the repository itself.
 
 ```{r, message=F, comment=F, eval = F}
 library(tidyr)
 library(stringr)
 library(dplyr)
-
-```
-
-```{r, message=F, comment=F}
-
-
-
-```
-
-```{r, message=F, comment=F}
-
-
+library(knitr)
 ```
 
 ```{r, message=F, comment=F}
 #load the df from the CSV
-sample_df2 <- read.csv(file = 'Data/aggregated/speeches.csv', header = TRUE)
+sample_df2 <- read.csv(file = 'Data/aggregated/speeches.csv', header = TRUE) %>% select(-X)
 ```
 
 ## Creating the main corpus and tokens
 
-We use the package quanteda for the analysis of the speeches. Quanteda uses corpus to...
+For our analysis of the speeches, we take a total number of 650 files starting on 2018-12-11 and ending on 2021-12-15. Our goal is to explore any trends related to the COVID-19 pandemic that appear in Mexico's incumbent President Andrés Manuel López Obrador (AMLO). We define our scope as statements given by the President himself in 2020 and 2021. We are interested in understanding if COVID-19 was a prominent topic in president's press conferences, whether it received more or less attention overtime, and if the attention on the pandemic is aligned with urgency and vehemence of the cases.
+
+We start our analysis by turning the files into a corpus with 5748 documents, using the r package `Quanteda`. Each document on the main corpus, represented as "Text", indicates everything said by a speaker on a particular date. Speakers who are not identified by name, such as those who appear as Pregunta, are aggregated as such. Total number of words is represented by "Tokens", whereas total number of unique tokens is represented by "Types". We also use the `docvars()` function in order to get the variable "Months" for future use.
 
 ```{r, message=F, comment=F}
 #create corpus with quanteda
@@ -60,40 +81,38 @@ docvars(main_corpus, field = "Month") <- substring(docvars(main_corpus, field = 
 
 ##Preparing tokens and subsets for main corpus
 
-Tokens are...
+Before we move on to the subsetting, we tokenize the main corpus. [@ Marco & Santiago: I don't remember why I did this, as this tokenization includes everyone and everydate - unless we find an explanation/purpose we can get rid of it.]
 
 ```{r, message=F, comment=F}
 #clean and create tokens for main corpus
-main_tokens <- tokens(main_corpus, remove_punct = TRUE, remove_numbers = TRUE)
-main_tokens <- tokens_select(main_tokens, stopwords('spanish'), selection='remove')
-main_tokens_dfm <- dfm(main_tokens)
+main_tokens_dfm <- main_corpus %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% dfm()
 
 #top features of main corpus (without subsets)
 topfeatures(main_tokens_dfm, 50)
 ```
 
-As we will be focusing on the subset of the speeches, specifically on those by the President during 2020 and 2021, we need subsets of the corpuses...
+As we will be focusing on subsets of the main corpus, specifically on statements given by the President during 2020 and 2021, we create multiple subsets of necessary corpuses. These include all statements by the President, statements by the President in 2020 and 2021, and statements by the President in each year. As shown on the summaries of these corpuses, we observe that President Obrador has spoken on 223 instances in 2020, and on 196 instances in 2021.
 
 ```{r, message=F, comment=F}
 #subsets with main corpus
-#subset for president's speeches - 663 docs
-subset_president <- (corpus_subset(main_corpus, Speaker == "PRESIDENTE ANDRÉS MANUEL LÓPEZ OBRADOR:"))
+#subset for president's speeches - 634 docs
+subset_president <- (corpus_subset(main_corpus, speaker == "Presidente Andrés Manuel López Obrador"))
 
-#subset for 2020 and 2021 - 418 docs
+#subset for 2020 and 2021 - 419 docs
 subset_president_interim <- (corpus_subset(subset_president, Date > "2019-12-31"))
 
 #subset for 2020 - 223 docs
 subset_president_2020 <- (corpus_subset(subset_president_interim, Date < "2021-01-01"))
 summary(subset_president_2020)
 
-#subset for 2021 - 195 docs
+#subset for 2021 - 196 docs
 subset_president_2021 <- (corpus_subset(subset_president, Date > "2020-12-31"))
 summary(subset_president_2021)
 ```
 
 ## 1) Exploration of top terms in President Obrador's speeches
 
-Our first section looks at the frequency of terms by President Obrador to see 1) if there is any particular theme around the terms 2) if covid related terms are discussed and 3) how 2020 and 2021 results differ from one another. We use frequency plots for 2020 and 2021 in order to visualize the frequency of the terms.
+Our first section looks at the frequency of words stated by President Obrador to see 1) if there is any particular theme around the terms 2) how 2020 and 2021 results differ from one another 3) if COVID-19 related terms are discussed. We start off by tokenizing the relevant subsets, turning the tokens into document-feature matrices, and later use frequency plots for 2020 and 2021 in order to visualize the list of terms.
 
 ```{r, message=F, comment=F}
 library("quanteda.textstats")
@@ -101,17 +120,11 @@ library("quanteda.textplots")
 library("ggplot2")
 
 #tokens and df for 2020
-tokens_president_2020 <- tokens(subset_president_2020, remove_punct = TRUE, remove_numbers = TRUE)
-tokens_president_2020 <- tokens_select(tokens_president_2020, stopwords('spanish'), selection='remove')
-tokens_president_2020 <- tokens_remove(tokens_president_2020, c("+"))
-tokens_president_2020 <- tokens_tolower(tokens_president_2020)
+tokens_president_2020 <- subset_president_2020 %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% tokens_remove(c("+")) %>% tokens_tolower()
 dfm_president_2020 <- dfm(tokens_president_2020)
 
 #tokens and df for 2021
-tokens_president_2021 <- tokens(subset_president_2021, remove_punct = TRUE, remove_numbers = TRUE)
-tokens_president_2021 <- tokens_select(tokens_president_2021, stopwords('spanish'), selection='remove')
-tokens_president_2021 <- tokens_remove(tokens_president_2021, c("+"))
-tokens_president_2021 <- tokens_tolower(tokens_president_2021)
+tokens_president_2021 <- subset_president_2021 %>% tokens(remove_punct = TRUE, remove_numbers = TRUE) %>% tokens_select(stopwords('spanish'), selection='remove') %>% tokens_remove(c("+")) %>% tokens_tolower()
 dfm_president_2021 <- dfm(tokens_president_2021)
 
 ```
@@ -155,19 +168,13 @@ ggplot(dfm_features_2, aes(x = feature, y = frequency)) +
         panel.grid.minor = element_line(colour = "grey", size = 0.2))
 ```
 
-**Discussion of results #1**
-```
-President Obrador's top 50 terms differ only slightly, with important themes being corruption, xxx, yyy. It is especially interesting to see, covid terms are not in top 50 terms in both years...
-```
+*Discussion goes here:* President Obrador's top 50 terms differ only slightly, with important themes being corruption, xxx, yyy. It is especially interesting to see, covid terms are not in top 50 terms in both years...
 
-## 2) Frequency and lexical dispersion analysis of covid related terms by month
+## 2) Frequency and lexical dispersion analysis of COVID-19 related terms by month
 
 In order to analyze how often covid related terms show up in President's speech, we start off by creating a frequency table and plot for possible related terms, and later use lexical dispersion plots for understanding their occurrences.
 
 Lexical dispersion marks the occurrence of terms over time and helps us visualize the frequency of these terms (like an x-ray machine). The x-axis represents the token index, whereas y-axis can be used for grouping (either time periods or different sources of material). Token index is relative or absolute, depending on whether the same text is used for comparison.
-
-
-
 
 ```{r}
 # corona virus Vocabulary in Spanish
@@ -181,10 +188,6 @@ covid_terms <- tables[[1]] %>%
 library(stringr)
 
 ```
-
-
-
-
 
 ```{r}
 #covid related freq plots
@@ -220,7 +223,6 @@ ggplot(freq_plot, aes(x = feature, y = frequency)) +
         panel.grid.minor = element_line(colour = "grey", size = 0.2))
 ```
 
-
 We group our corpus by Month to see how specific terms were used more or less frequently over periods of time.
 
 ```{r}
@@ -228,6 +230,7 @@ We group our corpus by Month to see how specific terms were used more or less fr
 grouped_corpus <- corpus_group(subset_president_interim, groups = Month)
 summary(grouped_corpus)
 ```
+
 And later, we pick the top words among covid terms and plot for lexical dispersions.
 
 ```{r}
@@ -246,14 +249,12 @@ textplot_xray(
         plot.title = element_text(size = 12, face = "bold", margin = margin(0, 0, 10, 0)),
         legend.position = "none")
 ```
-**Discussion of results**
-```
-Words pandemia and covid appear often whereas... Coronavirus changes its name and becomes covid, he never calls it coronavirus in 2021.
-```
 
-## 3) President Obrador's covid related terms vs number of new covid cases in Mexico
+*Discussion goes here:* Words pandemia and covid appear often whereas... Coronavirus changes its name and becomes covid, he never calls it coronavirus in 2021.
 
-Our main purpose here is to observe whether President's speeches on covid is aligned with the concern over increasing cases and the spread of the disease. In order to do this, we get covid data from World Health Organization (WHO) and compare the number of new cases in Mexico to covid terms in President's speech.
+## 3) Exploring the trend between COVID-19 related terms and number of new cases in Mexico
+
+Our main purpose here is to observe whether President's statements on COVID-19 is aligned with the concern over increasing cases and the spread of the disease. In order to do this, we get COVID-19 data from World Health Organization (WHO) and compare the number of new cases in Mexico to COVID-19 terms that appear in President Obrador's speeches.
 
 ```{r, message=F, comment=F}
 #get covid case data
@@ -297,7 +298,5 @@ ggplot(final_df, aes(x=doc_id)) +
         axis.title.y = element_text(size = 8, color = "azure4" , vjust = 2))
 ```
 
-**Discussion of results**
-```
-Who data is/is not aligned with speech...
-```
+*Discussion goes here:* Who data is/is not aligned with speech...
+
