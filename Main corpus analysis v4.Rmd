@@ -84,6 +84,8 @@ sample_df2 <- read.csv(file = 'sample_df.csv', header = TRUE)%>%
 
 ## Creating the main corpus and tokens
 
+We use the package quanteda for the analysis of the speeches. Quanteda uses corpus to...
+
 ```{r, message=F, comment=F}
 #create corpus with quanteda
 library("quanteda")
@@ -96,6 +98,8 @@ docvars(main_corpus, field = "Month") <- substring(docvars(main_corpus, field = 
 
 ##Preparing tokens and subsets for main corpus
 
+Tokens are...
+
 ```{r, message=F, comment=F}
 #clean and create tokens for main corpus
 main_tokens <- tokens(main_corpus, remove_punct = TRUE, remove_numbers = TRUE)
@@ -105,6 +109,8 @@ main_tokens_dfm <- dfm(main_tokens)
 #top features of main corpus (without subsets)
 topfeatures(main_tokens_dfm, 50)
 ```
+
+As we will be focusing on the subset of the speeches, specifically on those by the President during 2020 and 2021, we need subsets of the corpuses...
 
 ```{r, message=F, comment=F}
 #subsets with main corpus
@@ -200,7 +206,7 @@ Lexical dispersion marks the occurrence of terms over time and helps us visualiz
 
 ```{r}
 #covid related freq plots
-freq_interim <- subset_president_interim %>% tokens(groups = subset_president_interim$Date) %>% dfm() %>% textstat_frequency()
+freq_interim <- subset_president_interim %>% tokens() %>% dfm() %>% textstat_frequency()
 
 # filter the terms
 freq_pandemia <- subset(freq_interim, freq_interim$feature %in% "pandemia")
