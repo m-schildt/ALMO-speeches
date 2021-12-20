@@ -91,7 +91,7 @@ tokens_president_2021 <- subset_president_2021 %>% tokens(remove_punct = TRUE, r
 dfm_president_2021 <- dfm(tokens_president_2021)
 ```
 
-```{r, message=F, comment=F}
+```{r fig.align='center', message=F, comment=F}
 #plot top features frequency
 dfm_features <- textstat_frequency(dfm_president_2020, n = 50)
 dfm_features$feature <- with(dfm_features, reorder(feature, +frequency))
@@ -110,7 +110,7 @@ ggplot(dfm_features, aes(x = frequency, y = feature)) +
         panel.grid.major = element_line(colour = "grey", size = 0.3),
         panel.grid.minor = element_line(colour = "grey", size = 0.2))
 ```
-```{r, message=F, comment=F}
+```{r fig.align='center', message=F, comment=F}
 #plot top features frequency
 dfm_features_2 <- textstat_frequency(dfm_president_2021, n = 50)
 dfm_features_2$feature <- with(dfm_features_2, reorder(feature, +frequency))
@@ -146,7 +146,7 @@ In order to analyze how often COVID-19 related terms show up in President's spee
 
 Lexical dispersion marks the occurrence of terms over time and helps us visualize the frequency of these terms (like an x-ray machine). The x-axis represents the token index, whereas y-axis can be used for grouping (either time periods or different sources of material). Token index is relative or absolute, depending on whether the same text is used for comparison.
 
-```{r}
+```{r fig.align='center'}
 #covid related freq plots
 freq_interim <- subset_president_interim %>% tokens() %>% dfm() %>% textstat_frequency()
 
@@ -197,7 +197,7 @@ summary(grouped_corpus)
 
 We take the top words in our frequency table and plot for lexical dispersions with our grouped by Month corpus.
 
-```{r}
+```{r fig.align='center'}
 #create tokens
 grouped_tokens <- tokens(grouped_corpus)
 
@@ -263,7 +263,7 @@ weekly_df <- final_df %>%
                .funs = c(mean="mean"))
 ```
 
-```{r}
+```{r fig.align='center'}
 coef <- 1000
 
 #weekly cases
